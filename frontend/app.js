@@ -8,20 +8,44 @@ const state = {
   fraudCount: 0,
   totalAmount: 0,
   fraudAmount: 0,
+
   pendingChartValue: null,
+  pendingTickTransactionCount: 0,
+  pendingTickFraudCount: 0,
+  pendingTickTotalAmount: 0,
+  pendingTickFraudAmount: 0,
+
+  rollingTransactionCounts: [],
+  rollingFraudCounts: [],
+  rollingTotalAmounts: [],
+  rollingFraudAmounts: [],
+
   chartTick: 0
 };
 
 let probChart = null;
-let fraudCountChart = null;
+let fraudRateChart = null;
 let totalAmountChart = null;
 let fraudAmountChart = null;
 let chartInterval = null;
 
 const CHART_WINDOW_SIZE = 160;
+const ROLLING_WINDOW_TICKS = 40;
 
-function createLineChart(ctx, label, borderColor, initialValue = 0) {
+function createLineChart(ctx, label, borderColor, initialValue = 0, yMin = null, yMax = null) {
   if (!ctx) return null;
+
+  const yScale = {
+    ticks: {
+      color: "#96a0c8"
+    },
+    grid: {
+      color: "rgba(150, 160, 200, 0.08)"
+    }
+  };
+
+  if (yMin !== null) yScale.min = yMin;
+  if (yMax !== null) yScale.max = yMax;
 
   return new Chart(ctx, {
     type: "line",
@@ -44,10 +68,7 @@ function createLineChart(ctx, label, borderColor, initialValue = 0) {
       animation: false,
       plugins: {
         legend: {
-          display: false,
-          // labels: {
-          //   color: "#e8ecf8"
-          // }
+          display: false
         }
       },
       scales: {
@@ -59,14 +80,7 @@ function createLineChart(ctx, label, borderColor, initialValue = 0) {
             display: false
           }
         },
-        y: {
-          ticks: {
-            color: "#96a0c8"
-          },
-          grid: {
-            color: "rgba(150, 160, 200, 0.08)"
-          }
-        }
+        y: yScale
       }
     }
   });
@@ -77,34 +91,33 @@ function initCharts() {
     document.getElementById("probChart"),
     "Fraud Probability",
     "#f6c453",
-    0
+    0,
+    0,
+    1
   );
 
-  fraudCountChart = createLineChart(
-    document.getElementById("fraudCountChart"),
-    "Cumulative Fraud Count",
+  fraudRateChart = createLineChart(
+    document.getElementById("fraudRateChart"),
+    "Rolling Fraud Rate",
     "#ff5d73",
-    0
+    0,
+    0,
+    1
   );
 
   totalAmountChart = createLineChart(
     document.getElementById("totalAmountChart"),
-    "Cumulative Total Amount",
+    "Rolling Total Amount",
     "#6ea8fe",
     0
   );
 
   fraudAmountChart = createLineChart(
     document.getElementById("fraudAmountChart"),
-    "Cumulative Fraud Amount",
+    "Rolling Fraud Amount",
     "#ff8a5b",
     0
   );
-
-  if (probChart) {
-    probChart.options.scales.y.min = 0;
-    probChart.options.scales.y.max = 1;
-  }
 }
 
 function pushChartValue(chart, value) {
@@ -117,6 +130,17 @@ function pushChartValue(chart, value) {
   chart.data.datasets[0].data.push(value);
 
   chart.update();
+}
+
+function pushRollingValue(array, value, maxSize) {
+  array.push(value);
+  if (array.length > maxSize) {
+    array.shift();
+  }
+}
+
+function sumArray(array) {
+  return array.reduce((acc, value) => acc + value, 0);
 }
 
 function startChartLoop() {
@@ -135,10 +159,30 @@ function startChartLoop() {
       state.pendingChartValue = null;
     }
 
+    // Push this tick's values into rolling buffers
+    pushRollingValue(state.rollingTransactionCounts, state.pendingTickTransactionCount, ROLLING_WINDOW_TICKS);
+    pushRollingValue(state.rollingFraudCounts, state.pendingTickFraudCount, ROLLING_WINDOW_TICKS);
+    pushRollingValue(state.rollingTotalAmounts, state.pendingTickTotalAmount, ROLLING_WINDOW_TICKS);
+    pushRollingValue(state.rollingFraudAmounts, state.pendingTickFraudAmount, ROLLING_WINDOW_TICKS);
+
+    const rollingTransactions = sumArray(state.rollingTransactionCounts);
+    const rollingFrauds = sumArray(state.rollingFraudCounts);
+    const rollingTotalAmount = sumArray(state.rollingTotalAmounts);
+    const rollingFraudAmount = sumArray(state.rollingFraudAmounts);
+
+    const rollingFraudRate =
+      rollingTransactions === 0 ? 0 : rollingFrauds / rollingTransactions;
+
     pushChartValue(probChart, nextProbValue);
-    pushChartValue(fraudCountChart, state.fraudCount);
-    pushChartValue(totalAmountChart, state.totalAmount);
-    pushChartValue(fraudAmountChart, state.fraudAmount);
+    pushChartValue(fraudRateChart, rollingFraudRate);
+    pushChartValue(totalAmountChart, rollingTotalAmount);
+    pushChartValue(fraudAmountChart, rollingFraudAmount);
+
+    // Reset pending per-tick values after consuming them
+    state.pendingTickTransactionCount = 0;
+    state.pendingTickFraudCount = 0;
+    state.pendingTickTotalAmount = 0;
+    state.pendingTickFraudAmount = 0;
   }, 100);
 }
 
@@ -180,13 +224,22 @@ function updateMetrics(event) {
 
 function queueChartEvent(event) {
   const prob = Number(event.fraud_probability);
+  const amount = Number(event.amount);
+  const isFraud = event.prediction === 1 ? 1 : 0;
 
   if (state.pendingChartValue === null) {
     state.pendingChartValue = prob;
-    return;
+  } else {
+    state.pendingChartValue = Math.max(state.pendingChartValue, prob);
   }
 
-  state.pendingChartValue = Math.max(state.pendingChartValue, prob);
+  state.pendingTickTransactionCount += 1;
+  state.pendingTickFraudCount += isFraud;
+  state.pendingTickTotalAmount += amount;
+
+  if (isFraud === 1) {
+    state.pendingTickFraudAmount += amount;
+  }
 }
 
 function createAlertCard(event) {

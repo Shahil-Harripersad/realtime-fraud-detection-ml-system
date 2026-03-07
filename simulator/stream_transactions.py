@@ -111,7 +111,7 @@ def get_stream_dataframe(
 def main():
     parser = argparse.ArgumentParser(description="Simulate streaming credit card transactions.")
     parser.add_argument("--speed", type=float, default=0.2, help="Global delay multiplier between transactions.")
-    parser.add_argument("--limit", type=int, default=100, help="Number of rows to stream.")
+    parser.add_argument("--limit", type=int, default=200, help="Number of rows to stream.")
     parser.add_argument(
         "--mode",
         type=str,
@@ -122,7 +122,7 @@ def main():
     parser.add_argument(
         "--sparsity",
         type=float,
-        default=1.0,
+        default=1,
         help="Fraud sparsity multiplier for mixed mode. Higher = fewer fraud injections.",
     )
     parser.add_argument("--api-url", type=str, default=API_URL, help="Prediction API endpoint.")
