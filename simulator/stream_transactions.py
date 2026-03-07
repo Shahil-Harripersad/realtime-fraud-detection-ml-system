@@ -1,8 +1,8 @@
 import argparse
 import json
+import random
 import time
 from pathlib import Path
-import random
 
 import pandas as pd
 import requests
@@ -52,11 +52,79 @@ def clear_output_file(output_path: Path) -> None:
         output_path.unlink()
 
 
+def build_mixed_stream(df: pd.DataFrame, limit: int, sparsity: float) -> pd.DataFrame:
+    if sparsity <= 0:
+        raise ValueError("sparsity must be > 0")
+
+    normal_df = df[df["Class"] == 0].sample(frac=1).reset_index(drop=True)
+    fraud_df = df[df["Class"] == 1].sample(frac=1).reset_index(drop=True)
+
+    normal_idx = 0
+    fraud_idx = 0
+    rows = []
+
+    # Base fraud interval range; sparsity stretches or compresses it
+    base_min_gap = 4
+    base_max_gap = 12
+
+    min_gap = max(1, int(base_min_gap * sparsity))
+    max_gap = max(min_gap, int(base_max_gap * sparsity))
+
+    next_fraud_in = random.randint(min_gap, max_gap)
+
+    while len(rows) < limit:
+        if next_fraud_in <= 0 and fraud_idx < len(fraud_df):
+            rows.append(fraud_df.iloc[fraud_idx])
+            fraud_idx += 1
+            next_fraud_in = random.randint(min_gap, max_gap)
+        elif normal_idx < len(normal_df):
+            rows.append(normal_df.iloc[normal_idx])
+            normal_idx += 1
+            next_fraud_in -= 1
+        elif fraud_idx < len(fraud_df):
+            rows.append(fraud_df.iloc[fraud_idx])
+            fraud_idx += 1
+        else:
+            break
+
+    return pd.DataFrame(rows).reset_index(drop=True)
+
+
+def get_stream_dataframe(
+    df: pd.DataFrame,
+    mode: str,
+    limit: int,
+    sparsity: float,
+) -> pd.DataFrame:
+    if mode == "chronological":
+        return df.head(limit).reset_index(drop=True)
+
+    if mode == "fraud_only":
+        return df[df["Class"] == 1].sample(frac=1).head(limit).reset_index(drop=True)
+
+    if mode == "mixed":
+        return build_mixed_stream(df, limit=limit, sparsity=sparsity)
+
+    raise ValueError(f"Unsupported mode: {mode}")
+
+
 def main():
     parser = argparse.ArgumentParser(description="Simulate streaming credit card transactions.")
-    parser.add_argument("--speed", type=float, default=0.2, help="Delay in seconds between transactions.")
+    parser.add_argument("--speed", type=float, default=0.2, help="Global delay multiplier between transactions.")
     parser.add_argument("--limit", type=int, default=100, help="Number of rows to stream.")
-    parser.add_argument("--fraud-only", action="store_true", help="Stream only fraud transactions.")
+    parser.add_argument(
+        "--mode",
+        type=str,
+        default="mixed",
+        choices=["chronological", "fraud_only", "mixed"],
+        help="Streaming mode.",
+    )
+    parser.add_argument(
+        "--sparsity",
+        type=float,
+        default=1.0,
+        help="Fraud sparsity multiplier for mixed mode. Higher = fewer fraud injections.",
+    )
     parser.add_argument("--api-url", type=str, default=API_URL, help="Prediction API endpoint.")
     args = parser.parse_args()
 
@@ -66,22 +134,27 @@ def main():
     print("Loading transactions...")
     df = load_transactions(DATA_PATH)
 
-    if args.fraud_only:
-        df = df[df["Class"] == 1].reset_index(drop=True)
+    stream_df = get_stream_dataframe(
+        df=df,
+        mode=args.mode,
+        limit=args.limit,
+        sparsity=args.sparsity,
+    )
 
-    df = df.head(args.limit)
-
-    if df.empty:
+    if stream_df.empty:
         raise ValueError("No transactions available after filters were applied.")
 
     ensure_output_dir(OUTPUT_PATH)
     clear_output_file(OUTPUT_PATH)
 
-    print(f"Streaming {len(df)} transactions...")
-    print(f"Speed: {args.speed} sec/tx")
+    print(f"Streaming {len(stream_df)} transactions...")
+    print(f"Mode: {args.mode}")
+    print(f"Speed multiplier: {args.speed}")
+    if args.mode == "mixed":
+        print(f"Sparsity multiplier: {args.sparsity}")
     print(f"Output file: {OUTPUT_PATH}")
 
-    for idx, row in df.iterrows():
+    for idx, row in stream_df.iterrows():
         record = row.drop(labels=["Class"]).to_dict()
         actual_class = int(row["Class"])
 
@@ -115,9 +188,8 @@ def main():
         except Exception as e:
             print(f"[{idx}] Unexpected error: {e}")
 
-        base_delay = random.uniform(0.05, 1.5)  # random base interval
+        base_delay = random.uniform(0.05, 1.5)
         sleep_time = base_delay * args.speed
-
         time.sleep(sleep_time)
 
     print("Streaming complete.")
