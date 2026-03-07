@@ -5,12 +5,57 @@ const predictedNormalEl = document.getElementById("predictedNormal");
 const maxProbabilityEl = document.getElementById("maxProbability");
 const alertsListEl = document.getElementById("alertsList");
 const latestEventEl = document.getElementById("latestEvent");
-const clearAlertsBtn = document.getElementById("clearAlertsBtn");
 
 let totalEvents = 0;
 let predictedFraud = 0;
 let predictedNormal = 0;
 let maxProbability = 0;
+
+const state = {
+  events: [],
+  totalTransactions: 0,
+  fraudCount: 0,
+  totalAmount: 0,
+  fraudAmount: 0
+};
+
+const ctx = document.getElementById("probChart");
+
+let probChart = null;
+
+function initChart() {
+  const ctx = document.getElementById("probChart");
+
+  if (!ctx) {
+    console.warn("Chart canvas not found");
+    return;
+  }
+
+  probChart = new Chart(ctx, {
+    type: "line",
+    data: {
+      labels: [],
+      datasets: [
+        {
+          label: "Fraud Probability",
+          data: [],
+          borderColor: "#f6c453",
+          tension: 0.25,
+          pointRadius: 2
+        }
+      ]
+    },
+    options: {
+      animation: false,
+      scales: {
+        y: {
+          min: 0,
+          max: 1
+        }
+      }
+    }
+  });
+}
 
 function setSocketStatus(connected) {
   socketStatus.textContent = connected ? "Connected" : "Disconnected";
@@ -26,23 +71,48 @@ function formatAmount(value) {
   return Number(value).toFixed(2);
 }
 
-function updateMetrics(eventData) {
-  totalEvents += 1;
+function updateMetrics(event) {
 
-  if (eventData.prediction === 1) {
-    predictedFraud += 1;
-  } else {
-    predictedNormal += 1;
+  state.totalTransactions += 1;
+  state.totalAmount += event.amount;
+
+  if (event.prediction === 1) {
+    state.fraudCount += 1;
+    state.fraudAmount += event.amount;
   }
 
-  if (eventData.fraud_probability > maxProbability) {
-    maxProbability = eventData.fraud_probability;
+  document.getElementById("totalTx").textContent = state.totalTransactions;
+  document.getElementById("fraudTx").textContent = state.fraudCount;
+
+  document.getElementById("totalAmount").textContent =
+    "$" + state.totalAmount.toFixed(2);
+
+  document.getElementById("fraudAmount").textContent =
+    "$" + state.fraudAmount.toFixed(2);
+
+  const fraudRate =
+    state.totalTransactions === 0
+      ? 0
+      : (state.fraudCount / state.totalTransactions) * 100;
+
+  document.getElementById("fraudRate").textContent =
+    fraudRate.toFixed(2) + "%";
+}
+
+function updateChart(event) {
+
+  if (!probChart) return;
+
+  probChart.data.labels.push(state.totalTransactions);
+
+  probChart.data.datasets[0].data.push(event.fraud_probability);
+
+  if (probChart.data.labels.length > 60) {
+    probChart.data.labels.shift();
+    probChart.data.datasets[0].data.shift();
   }
 
-  totalEventsEl.textContent = String(totalEvents);
-  predictedFraudEl.textContent = String(predictedFraud);
-  predictedNormalEl.textContent = String(predictedNormal);
-  maxProbabilityEl.textContent = formatProbability(maxProbability);
+  probChart.update();
 }
 
 function renderLatestEvent(eventData) {
@@ -78,23 +148,24 @@ function renderLatestEvent(eventData) {
   `;
 }
 
-function renderAlertCard(eventData) {
+function renderAlert(event) {
+
   const card = document.createElement("div");
-  card.className = `alert-card ${eventData.prediction_label}`;
+
+  card.className = `alert-card ${event.prediction_label}`;
 
   card.innerHTML = `
     <div class="alert-top">
-      <span class="alert-label ${eventData.prediction_label}">
-        ${eventData.prediction_label.toUpperCase()}
+      <span class="alert-label ${event.prediction_label}">
+        ${event.prediction_label.toUpperCase()}
       </span>
       <span class="alert-prob">
-        p=${formatProbability(eventData.fraud_probability)}
+        p=${event.fraud_probability.toFixed(4)}
       </span>
     </div>
+
     <div class="alert-meta">
-      <div>Amount: ${formatAmount(eventData.amount)}</div>
-      <div>Time: ${Number(eventData.event_time).toFixed(1)}</div>
-      <div>Threshold: ${formatProbability(eventData.threshold)}</div>
+      <div>Amount: $${event.amount.toFixed(2)}</div>
     </div>
   `;
 
@@ -104,21 +175,18 @@ function renderAlertCard(eventData) {
 
   alertsListEl.prepend(card);
 
-  const maxCards = 50;
-  while (alertsListEl.children.length > maxCards) {
+  if (alertsListEl.children.length > 40) {
     alertsListEl.removeChild(alertsListEl.lastChild);
   }
 }
 
-function handlePredictionEvent(eventData) {
-  updateMetrics(eventData);
-  renderLatestEvent(eventData);
-  renderAlertCard(eventData);
-}
-
 function connectWebSocket() {
+  console.log("Opening WebSocket connection...");
+
   const protocol = window.location.protocol === "https:" ? "wss" : "ws";
   const wsUrl = `${protocol}://${window.location.host}/ws`;
+
+  console.log("WS URL:", wsUrl);
 
   const socket = new WebSocket(wsUrl);
 
@@ -132,7 +200,14 @@ function connectWebSocket() {
     const payload = JSON.parse(event.data);
 
     if (payload.type === "prediction_event") {
-        handlePredictionEvent(payload.data);
+
+      const event = payload.data;
+
+      state.events.push(event);
+
+      updateMetrics(event);
+      updateChart(event);
+      renderAlert(event);
     }
     };
 
@@ -148,9 +223,9 @@ function connectWebSocket() {
     };
 }
 
-clearAlertsBtn.addEventListener("click", () => {
-  alertsListEl.innerHTML = `<div class="empty-state">No live events yet.</div>`;
-});
-
 setSocketStatus(false);
-connectWebSocket();
+
+document.addEventListener("DOMContentLoaded", () => {
+  initChart();
+  connectWebSocket();
+});

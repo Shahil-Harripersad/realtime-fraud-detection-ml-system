@@ -152,6 +152,9 @@ async def predict_batch(request: BatchPredictionRequest):
 
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
+
+    print("WebSocket connection attempt")
+
     await ws_manager.connect(websocket)
 
     try:

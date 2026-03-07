@@ -19,46 +19,58 @@
     </header>
 
     <section class="metrics-grid">
+
       <div class="metric-card">
-        <span class="metric-label">Total Events</span>
-        <span id="totalEvents" class="metric-value">0</span>
+        <span class="metric-label">Total Transactions</span>
+        <span id="totalTx" class="metric-value">0</span>
       </div>
+
       <div class="metric-card">
-        <span class="metric-label">Predicted Fraud</span>
-        <span id="predictedFraud" class="metric-value danger">0</span>
+        <span class="metric-label">Total Fraud</span>
+        <span id="fraudTx" class="metric-value danger">0</span>
       </div>
+
       <div class="metric-card">
-        <span class="metric-label">Normal</span>
-        <span id="predictedNormal" class="metric-value success">0</span>
+        <span class="metric-label">Total Amount</span>
+        <span id="totalAmount" class="metric-value">$0</span>
       </div>
+
       <div class="metric-card">
-        <span class="metric-label">Max Fraud Probability</span>
-        <span id="maxProbability" class="metric-value">0.000000</span>
+        <span class="metric-label">Fraud Amount</span>
+        <span id="fraudAmount" class="metric-value danger">$0</span>
       </div>
+
+      <div class="metric-card">
+        <span class="metric-label">Fraud Rate</span>
+        <span id="fraudRate" class="metric-value">0%</span>
+      </div>
+
     </section>
 
     <main class="content-grid">
+
       <section class="panel">
         <div class="panel-header">
-          <h2>Live Alerts</h2>
-          <button id="clearAlertsBtn" class="btn">Clear</button>
+          <h2>Live Transaction Tape</h2>
         </div>
+
         <div id="alertsList" class="alerts-list">
-          <div class="empty-state">No live events yet.</div>
+          <div class="empty-state">Waiting for transactions...</div>
         </div>
       </section>
 
       <section class="panel">
         <div class="panel-header">
-          <h2>Latest Event</h2>
+          <h2>Fraud Probability Stream</h2>
         </div>
-        <div id="latestEvent" class="latest-event empty-state">
-          Waiting for streamed transactions...
-        </div>
+
+        <canvas id="probChart"></canvas>
       </section>
+
     </main>
   </div>
-
+  
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="/app.js"></script>
 </body>
 </html>
