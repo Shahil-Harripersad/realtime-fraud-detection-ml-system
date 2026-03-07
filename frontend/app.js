@@ -1,15 +1,21 @@
 let socketStatusEl;
 let alertsListEl;
+let fraudListEl;
+
+const CHART_WINDOW_SIZE = 60;
 
 const state = {
   events: [],
   totalTransactions: 0,
   fraudCount: 0,
   totalAmount: 0,
-  fraudAmount: 0
+  fraudAmount: 0,
+  pendingChartValue: null,
+  chartTick: 0
 };
 
 let probChart = null;
+let chartInterval = null;
 
 function initChart() {
   const ctx = document.getElementById("probChart");
@@ -22,14 +28,14 @@ function initChart() {
   probChart = new Chart(ctx, {
     type: "line",
     data: {
-      labels: [],
+      labels: Array(CHART_WINDOW_SIZE).fill(""),
       datasets: [
         {
           label: "Fraud Probability",
-          data: [],
+          data: Array(CHART_WINDOW_SIZE).fill(0),
           borderColor: "#f6c453",
           tension: 0.25,
-          pointRadius: 2,
+          pointRadius: 0,
           borderWidth: 2
         }
       ]
@@ -37,7 +43,10 @@ function initChart() {
     options: {
       responsive: true,
       maintainAspectRatio: false,
-      animation: false,
+      animation: {
+        duration: 250,
+        easing: "linear"
+      },
       plugins: {
         legend: {
           labels: {
@@ -48,10 +57,10 @@ function initChart() {
       scales: {
         x: {
           ticks: {
-            color: "#96a0c8"
+            display: false
           },
           grid: {
-            color: "rgba(150, 160, 200, 0.08)"
+            display: false
           }
         },
         y: {
@@ -67,6 +76,33 @@ function initChart() {
       }
     }
   });
+}
+
+function startChartLoop() {
+  if (!probChart) return;
+
+  if (chartInterval) {
+    clearInterval(chartInterval);
+  }
+
+  chartInterval = setInterval(() => {
+    state.chartTick += 1;
+
+    let nextValue = 0;
+
+    if (state.pendingChartValue !== null) {
+      nextValue = state.pendingChartValue;
+      state.pendingChartValue = null;
+    }
+
+    probChart.data.labels.shift();
+    probChart.data.labels.push("");
+
+    probChart.data.datasets[0].data.shift();
+    probChart.data.datasets[0].data.push(nextValue);
+
+    probChart.update();
+  }, 250);
 }
 
 function setSocketStatus(connected) {
@@ -105,23 +141,18 @@ function updateMetrics(event) {
   if (fraudRateEl) fraudRateEl.textContent = fraudRate.toFixed(2) + "%";
 }
 
-function updateChart(event) {
-  if (!probChart) return;
+function queueChartEvent(event) {
+  const prob = Number(event.fraud_probability);
 
-  probChart.data.labels.push(state.totalTransactions);
-  probChart.data.datasets[0].data.push(Number(event.fraud_probability));
-
-  if (probChart.data.labels.length > 60) {
-    probChart.data.labels.shift();
-    probChart.data.datasets[0].data.shift();
+  if (state.pendingChartValue === null) {
+    state.pendingChartValue = prob;
+    return;
   }
 
-  probChart.update();
+  state.pendingChartValue = Math.max(state.pendingChartValue, prob);
 }
 
-function renderAlert(event) {
-  if (!alertsListEl) return;
-
+function createAlertCard(event) {
   const card = document.createElement("div");
   card.className = `alert-card ${event.prediction_label}`;
 
@@ -139,16 +170,38 @@ function renderAlert(event) {
     </div>
   `;
 
-  const emptyState = alertsListEl.querySelector(".empty-state");
+  return card;
+}
+
+function prependCard(container, card, maxItems, emptyMessage) {
+  if (!container) return;
+
+  const emptyState = container.querySelector(".empty-state");
   if (emptyState) {
-    alertsListEl.innerHTML = "";
+    container.innerHTML = "";
   }
 
-  alertsListEl.prepend(card);
+  container.prepend(card);
 
-  while (alertsListEl.children.length > 40) {
-    alertsListEl.removeChild(alertsListEl.lastChild);
+  while (container.children.length > maxItems) {
+    container.removeChild(container.lastChild);
   }
+
+  if (container.children.length === 0) {
+    container.innerHTML = `<div class="empty-state">${emptyMessage}</div>`;
+  }
+}
+
+function renderAllEvent(event) {
+  const card = createAlertCard(event);
+  prependCard(alertsListEl, card, 60, "Waiting for transactions...");
+}
+
+function renderFraudEvent(event) {
+  if (event.prediction !== 1) return;
+
+  const card = createAlertCard(event);
+  prependCard(fraudListEl, card, 20, "No fraud events yet.");
 }
 
 function connectWebSocket() {
@@ -167,16 +220,17 @@ function connectWebSocket() {
   };
 
   socket.onmessage = (event) => {
-    console.log("WebSocket message:", event.data);
     const payload = JSON.parse(event.data);
 
     if (payload.type === "prediction_event") {
       const incomingEvent = payload.data;
+
       state.events.push(incomingEvent);
 
       updateMetrics(incomingEvent);
-      updateChart(incomingEvent);
-      renderAlert(incomingEvent);
+      queueChartEvent(incomingEvent);
+      renderFraudEvent(incomingEvent);
+      renderAllEvent(incomingEvent);
     }
   };
 
@@ -195,8 +249,10 @@ function connectWebSocket() {
 document.addEventListener("DOMContentLoaded", () => {
   socketStatusEl = document.getElementById("socketStatus");
   alertsListEl = document.getElementById("alertsList");
+  fraudListEl = document.getElementById("fraudList");
 
   initChart();
+  startChartLoop();
   setSocketStatus(false);
   connectWebSocket();
 });

@@ -82,6 +82,13 @@ body {
   color: var(--danger);
 }
 
+.content-grid {
+  min-height: 0;
+  display: grid;
+  grid-template-columns: 0.95fr 1.55fr;
+  gap: 16px;
+}
+
 .metrics-grid {
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));
@@ -127,11 +134,16 @@ body {
   color: var(--danger);
 }
 
-.content-grid {
+.left-stack {
   min-height: 0;
   display: grid;
-  grid-template-columns: 0.9fr 1.6fr;
+  grid-template-rows: minmax(0, 1fr) minmax(0, 2fr);
   gap: 16px;
+}
+
+.fraud-panel,
+.tape-panel {
+  min-height: 0;
 }
 
 .panel {
@@ -160,10 +172,10 @@ body {
 }
 
 .alerts-list {
-  padding: 12px;
+  padding: 8px;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 6px;
   overflow-y: auto;
   min-height: 0;
 }
@@ -220,6 +232,41 @@ body {
   font-size: 0.88rem;
 }
 
+.compact-list .alert-card {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 8px 10px;
+  background: rgba(255, 255, 255, 0.02);
+  flex-shrink: 0;
+}
+
+.compact-list .alert-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.compact-list .alert-label {
+  font-weight: 800;
+  letter-spacing: 0.03em;
+  font-size: 0.78rem;
+}
+
+.compact-list .alert-prob {
+  color: var(--warning);
+  font-weight: 700;
+  font-size: 0.78rem;
+  white-space: nowrap;
+}
+
+.compact-list .alert-meta {
+  color: var(--muted);
+  font-size: 0.76rem;
+  line-height: 1.15;
+}
+
 .empty-state {
   color: var(--muted);
   padding: 16px;
@@ -230,6 +277,7 @@ body {
   height: 100%;
   padding: 12px;
   position: relative;
+  overflow: hidden;
 }
 
 .chart-wrap canvas {
@@ -265,5 +313,9 @@ body {
 
   .content-grid {
     grid-template-columns: 1fr;
+  }
+
+  .left-stack {
+    grid-template-rows: 220px 320px;
   }
 }

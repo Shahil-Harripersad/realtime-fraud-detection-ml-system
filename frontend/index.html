@@ -46,13 +46,24 @@
     </section>
 
     <main class="content-grid">
-      <section class="panel">
-        <div class="panel-header">
-          <h2>Live Transaction Tape</h2>
-        </div>
-        <div id="alertsList" class="alerts-list">
-          <div class="empty-state">Waiting for transactions...</div>
-        </div>
+      <section class="left-stack">
+        <section class="panel fraud-panel">
+          <div class="panel-header">
+            <h2>Fraud Events</h2>
+          </div>
+          <div id="fraudList" class="alerts-list compact-list">
+            <div class="empty-state">No fraud events yet.</div>
+          </div>
+        </section>
+
+        <section class="panel tape-panel">
+          <div class="panel-header">
+            <h2>Live Transaction Tape</h2>
+          </div>
+          <div id="alertsList" class="alerts-list compact-list">
+            <div class="empty-state">Waiting for transactions...</div>
+          </div>
+        </section>
       </section>
 
       <section class="panel">
