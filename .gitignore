@@ -12,6 +12,7 @@ venv/
 models/*.joblib
 outputs/figures/*.png
 outputs/metrics/*.json
+outputs/predictions/*.jsonl
 
 data/*
 !data/.gitkeep
