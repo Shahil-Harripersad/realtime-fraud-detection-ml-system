@@ -19,7 +19,6 @@
     </header>
 
     <section class="metrics-grid">
-
       <div class="metric-card">
         <span class="metric-label">Total Transactions</span>
         <span id="totalTx" class="metric-value">0</span>
@@ -32,28 +31,25 @@
 
       <div class="metric-card">
         <span class="metric-label">Total Amount</span>
-        <span id="totalAmount" class="metric-value">$0</span>
+        <span id="totalAmount" class="metric-value">$0.00</span>
       </div>
 
       <div class="metric-card">
         <span class="metric-label">Fraud Amount</span>
-        <span id="fraudAmount" class="metric-value danger">$0</span>
+        <span id="fraudAmount" class="metric-value danger">$0.00</span>
       </div>
 
       <div class="metric-card">
         <span class="metric-label">Fraud Rate</span>
-        <span id="fraudRate" class="metric-value">0%</span>
+        <span id="fraudRate" class="metric-value">0.00%</span>
       </div>
-
     </section>
 
     <main class="content-grid">
-
       <section class="panel">
         <div class="panel-header">
           <h2>Live Transaction Tape</h2>
         </div>
-
         <div id="alertsList" class="alerts-list">
           <div class="empty-state">Waiting for transactions...</div>
         </div>
@@ -63,13 +59,13 @@
         <div class="panel-header">
           <h2>Fraud Probability Stream</h2>
         </div>
-
-        <canvas id="probChart"></canvas>
+        <div class="chart-wrap">
+          <canvas id="probChart"></canvas>
+        </div>
       </section>
-
     </main>
   </div>
-  
+
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="/app.js"></script>
 </body>
