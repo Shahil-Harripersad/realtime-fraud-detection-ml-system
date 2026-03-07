@@ -2,8 +2,6 @@ let socketStatusEl;
 let alertsListEl;
 let fraudListEl;
 
-const CHART_WINDOW_SIZE = 60;
-
 const state = {
   events: [],
   totalTransactions: 0,
@@ -15,25 +13,25 @@ const state = {
 };
 
 let probChart = null;
+let fraudCountChart = null;
+let totalAmountChart = null;
+let fraudAmountChart = null;
 let chartInterval = null;
 
-function initChart() {
-  const ctx = document.getElementById("probChart");
+const CHART_WINDOW_SIZE = 160;
 
-  if (!ctx) {
-    console.warn("Chart canvas not found");
-    return;
-  }
+function createLineChart(ctx, label, borderColor, initialValue = 0) {
+  if (!ctx) return null;
 
-  probChart = new Chart(ctx, {
+  return new Chart(ctx, {
     type: "line",
     data: {
       labels: Array(CHART_WINDOW_SIZE).fill(""),
       datasets: [
         {
-          label: "Fraud Probability",
-          data: Array(CHART_WINDOW_SIZE).fill(0),
-          borderColor: "#f6c453",
+          label,
+          data: Array(CHART_WINDOW_SIZE).fill(initialValue),
+          borderColor,
           tension: 0.25,
           pointRadius: 0,
           borderWidth: 2
@@ -43,15 +41,13 @@ function initChart() {
     options: {
       responsive: true,
       maintainAspectRatio: false,
-      animation: {
-        duration: 250,
-        easing: "linear"
-      },
+      animation: false,
       plugins: {
         legend: {
-          labels: {
-            color: "#e8ecf8"
-          }
+          display: false,
+          // labels: {
+          //   color: "#e8ecf8"
+          // }
         }
       },
       scales: {
@@ -64,8 +60,6 @@ function initChart() {
           }
         },
         y: {
-          min: 0,
-          max: 1,
           ticks: {
             color: "#96a0c8"
           },
@@ -78,6 +72,53 @@ function initChart() {
   });
 }
 
+function initCharts() {
+  probChart = createLineChart(
+    document.getElementById("probChart"),
+    "Fraud Probability",
+    "#f6c453",
+    0
+  );
+
+  fraudCountChart = createLineChart(
+    document.getElementById("fraudCountChart"),
+    "Cumulative Fraud Count",
+    "#ff5d73",
+    0
+  );
+
+  totalAmountChart = createLineChart(
+    document.getElementById("totalAmountChart"),
+    "Cumulative Total Amount",
+    "#6ea8fe",
+    0
+  );
+
+  fraudAmountChart = createLineChart(
+    document.getElementById("fraudAmountChart"),
+    "Cumulative Fraud Amount",
+    "#ff8a5b",
+    0
+  );
+
+  if (probChart) {
+    probChart.options.scales.y.min = 0;
+    probChart.options.scales.y.max = 1;
+  }
+}
+
+function pushChartValue(chart, value) {
+  if (!chart) return;
+
+  chart.data.labels.shift();
+  chart.data.labels.push("");
+
+  chart.data.datasets[0].data.shift();
+  chart.data.datasets[0].data.push(value);
+
+  chart.update();
+}
+
 function startChartLoop() {
   if (!probChart) return;
 
@@ -88,21 +129,17 @@ function startChartLoop() {
   chartInterval = setInterval(() => {
     state.chartTick += 1;
 
-    let nextValue = 0;
-
+    let nextProbValue = 0;
     if (state.pendingChartValue !== null) {
-      nextValue = state.pendingChartValue;
+      nextProbValue = state.pendingChartValue;
       state.pendingChartValue = null;
     }
 
-    probChart.data.labels.shift();
-    probChart.data.labels.push("");
-
-    probChart.data.datasets[0].data.shift();
-    probChart.data.datasets[0].data.push(nextValue);
-
-    probChart.update();
-  }, 250);
+    pushChartValue(probChart, nextProbValue);
+    pushChartValue(fraudCountChart, state.fraudCount);
+    pushChartValue(totalAmountChart, state.totalAmount);
+    pushChartValue(fraudAmountChart, state.fraudAmount);
+  }, 100);
 }
 
 function setSocketStatus(connected) {
@@ -251,7 +288,7 @@ document.addEventListener("DOMContentLoaded", () => {
   alertsListEl = document.getElementById("alertsList");
   fraudListEl = document.getElementById("fraudList");
 
-  initChart();
+  initCharts();
   startChartLoop();
   setSocketStatus(false);
   connectWebSocket();
