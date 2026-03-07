@@ -5,8 +5,8 @@ matplotlib
 seaborn
 joblib
 fastapi
-uvicorn
-streamlit
+uvicorn[standard]
 requests
 plotly
 xgboost
+websockets

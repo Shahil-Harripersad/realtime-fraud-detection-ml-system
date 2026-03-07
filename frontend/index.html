@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Real-Time Fraud Detection Console</title>
+  <link rel="stylesheet" href="/style.css" />
+</head>
+<body>
+  <div class="app">
+    <header class="topbar">
+      <div>
+        <h1>Real-Time Fraud Detection Console</h1>
+        <p class="subtitle">Live transaction monitoring via FastAPI + WebSockets</p>
+      </div>
+      <div class="status-group">
+        <span id="socketStatus" class="status-pill offline">Disconnected</span>
+      </div>
+    </header>
+
+    <section class="metrics-grid">
+      <div class="metric-card">
+        <span class="metric-label">Total Events</span>
+        <span id="totalEvents" class="metric-value">0</span>
+      </div>
+      <div class="metric-card">
+        <span class="metric-label">Predicted Fraud</span>
+        <span id="predictedFraud" class="metric-value danger">0</span>
+      </div>
+      <div class="metric-card">
+        <span class="metric-label">Normal</span>
+        <span id="predictedNormal" class="metric-value success">0</span>
+      </div>
+      <div class="metric-card">
+        <span class="metric-label">Max Fraud Probability</span>
+        <span id="maxProbability" class="metric-value">0.000000</span>
+      </div>
+    </section>
+
+    <main class="content-grid">
+      <section class="panel">
+        <div class="panel-header">
+          <h2>Live Alerts</h2>
+          <button id="clearAlertsBtn" class="btn">Clear</button>
+        </div>
+        <div id="alertsList" class="alerts-list">
+          <div class="empty-state">No live events yet.</div>
+        </div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-header">
+          <h2>Latest Event</h2>
+        </div>
+        <div id="latestEvent" class="latest-event empty-state">
+          Waiting for streamed transactions...
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script src="/app.js"></script>
+</body>
+</html>
