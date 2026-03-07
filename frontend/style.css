@@ -298,6 +298,25 @@ body {
   min-height: 0;
 }
 
+.pulse-fraud {
+  animation: fraudPulse 0.6s ease;
+}
+
+@keyframes fraudPulse {
+  0% {
+    box-shadow: 0 0 0 rgba(255, 93, 115, 0);
+    border-color: var(--border);
+  }
+  30% {
+    box-shadow: 0 0 24px rgba(255, 93, 115, 0.35);
+    border-color: rgba(255, 93, 115, 0.8);
+  }
+  100% {
+    box-shadow: 0 0 0 rgba(255, 93, 115, 0);
+    border-color: var(--border);
+  }
+}
+
 @media (max-width: 1200px) {
   .metrics-grid {
     grid-template-columns: repeat(5, minmax(120px, 1fr));

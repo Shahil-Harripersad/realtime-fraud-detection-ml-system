@@ -56,6 +56,8 @@ function createLineChart(ctx, label, borderColor, initialValue = 0, yMin = null,
           label,
           data: Array(CHART_WINDOW_SIZE).fill(initialValue),
           borderColor,
+          backgroundColor: borderColor + "33",
+          fill: false,
           tension: 0.25,
           pointRadius: 0,
           borderWidth: 2
@@ -118,6 +120,14 @@ function initCharts() {
     "#ff8a5b",
     0
   );
+
+  if (totalAmountChart) {
+    totalAmountChart.data.datasets[0].fill = true;
+  }
+
+  if (fraudAmountChart) {
+    fraudAmountChart.data.datasets[0].fill = true;
+  }
 }
 
 function pushChartValue(chart, value) {
@@ -184,6 +194,19 @@ function startChartLoop() {
     state.pendingTickTotalAmount = 0;
     state.pendingTickFraudAmount = 0;
   }, 100);
+}
+
+function triggerFraudPulse() {
+  const fraudPanel = document.getElementById("fraudPanel");
+  const fraudMetricCard = document.getElementById("fraudMetricCard");
+
+  [fraudPanel, fraudMetricCard].forEach((el) => {
+    if (!el) return;
+
+    el.classList.remove("pulse-fraud");
+    void el.offsetWidth;
+    el.classList.add("pulse-fraud");
+  });
 }
 
 function setSocketStatus(connected) {
@@ -292,6 +315,7 @@ function renderFraudEvent(event) {
 
   const card = createAlertCard(event);
   prependCard(fraudListEl, card, 20, "No fraud events yet.");
+  triggerFraudPulse();
 }
 
 function connectWebSocket() {
