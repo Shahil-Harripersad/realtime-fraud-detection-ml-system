@@ -142,7 +142,7 @@ Navigate to:
 
 ### 5 Run the transaction simulator
 
-    python simulator/stream_transactions.py --mode mixed --speed 0.3
+    python -m simulator.stream_transactions --mode mixed --speed 0.3 --
 
 The dashboard will begin updating in real time.
 
