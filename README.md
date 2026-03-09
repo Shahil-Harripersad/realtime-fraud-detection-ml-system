@@ -116,7 +116,9 @@ python -m simulator/stream_transactions.py --mode mixed --speed 0.3 --limit 1000
     
     https://www.kaggle.com/datasets/mlg-ulb/creditcardfraud?resource=download
 
-Set the path to your dataset in `app.config.DATA_PATH`    
+Set the path to your dataset in `app.config.DATA_PATH`
+
+---
 
 ### 1 Install dependencies
 
