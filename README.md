@@ -105,7 +105,7 @@ Transactions are sent sequentially to the API, scored by the model, and broadcas
 Example:
 
 ```bash
-python simulator/stream_transactions.py --mode mixed --speed 0.3 --limit 1000
+python -m simulator/stream_transactions.py --mode mixed --speed 0.3 --limit 1000
 ```
 
 ------------------------------------------------------------------------
@@ -120,7 +120,7 @@ python simulator/stream_transactions.py --mode mixed --speed 0.3 --limit 1000
 
 ### 2 Train the model
 
-    python training/train_model.py
+    python -m src.train
 
 This saves the trained model and metadata.
 
@@ -142,7 +142,7 @@ Navigate to:
 
 ### 5 Run the transaction simulator
 
-    python -m simulator.stream_transactions --mode mixed --speed 0.3 --
+    python -m simulator.stream_transactions --mode mixed --speed 0.3 --limit 1000
 
 The dashboard will begin updating in real time.
 
